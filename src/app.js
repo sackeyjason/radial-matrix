@@ -1,3 +1,5 @@
+import { updateFps, renderFps } from "./fps";
+
 const SCREEN_WIDTH = 640;
 const SCREEN_HEIGHT = 480;
 const GRID_WIDTH = 32;
@@ -5,8 +7,16 @@ const GRID_HEIGHT = 20;
 const VOID_RADIUS = 16;
 const CRUST_THICKNESS = 16;
 const SCREEN_CENTRE = [(SCREEN_WIDTH - 1) / 2, (SCREEN_HEIGHT - 1) / 2];
-
 const ACTIVE_RADIUS = SCREEN_HEIGHT / 2 - (VOID_RADIUS + CRUST_THICKNESS);
+
+let circleRadius = SCREEN_HEIGHT - 1 * CRUST_THICKNESS;
+const circle = {
+  x: (SCREEN_WIDTH - circleRadius) / 2,
+  y: CRUST_THICKNESS,
+  bottom: SCREEN_HEIGHT - CRUST_THICKNESS,
+  w: (SCREEN_WIDTH - circleRadius) / 2 + circleRadius,
+};
+let ctx;
 
 const grid = new Array(GRID_HEIGHT).fill(null).map((r) => {
   return new Array(GRID_WIDTH).fill(0);
@@ -15,8 +25,8 @@ const grid = new Array(GRID_HEIGHT).fill(null).map((r) => {
 grid[0] = [1, 1, 1];
 grid[1] = [0, 0, 1];
 
-grid[GRID_HEIGHT - 2].fill(1, 1, GRID_WIDTH - 1);
-grid[GRID_HEIGHT - 3].fill(1, 2, GRID_WIDTH - 2);
+grid[GRID_HEIGHT - 1].fill(1, 1, GRID_WIDTH - 1);
+grid[GRID_HEIGHT - 2].fill(1, 2, GRID_WIDTH - 2);
 
 function getGridCoords(angle, radius) {
   const gridX = Math.floor((angle / (2 * Math.PI)) * GRID_WIDTH);
@@ -26,15 +36,14 @@ function getGridCoords(angle, radius) {
   return [gridX, gridY];
 }
 
-function renderGrid(ctx) {
+function renderGrid() {
   ctx.fillStyle = "rgba(0, 0, 0, 1)";
-  // fill circle*
   ctx.fillRect(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
   ctx.fillStyle = `rgba(128, 128, 128, 1)`;
 
   // for each pixel
-  for (let y = 0; y < SCREEN_HEIGHT; y += 2) {
-    for (let x = 0; x < SCREEN_WIDTH; x += 2) {
+  for (let y = circle.y; y < circle.bottom; y += 1) {
+    for (let x = circle.x; x < circle.w; x += 1) {
       const dx = x - SCREEN_CENTRE[0];
       const dy = y - SCREEN_CENTRE[1];
 
@@ -43,18 +52,11 @@ function renderGrid(ctx) {
 
       const [gridX, gridY] = getGridCoords(angle, radius);
 
-      // b = Math.floor(Math.random() * 128) + 128;
-      // g = Math.floor(Math.random() * 128) + 128;
-      
-      if (isSolid(gridX, gridY)) {
+      if (grid[gridY] && grid[gridY][gridX]) {
         ctx.fillRect(x, y, 2, 2);
       }
     }
   }
-}
-
-function isSolid(x, y) {
-  return grid[y] && grid[y][x];
 }
 
 function getClickHandler() {
@@ -88,51 +90,36 @@ function getClickHandler() {
   };
 }
 
+const halfPi = Math.PI / 2
 /**
  * Get angle from top, clockwise, positive
  * @param {number} x
  * @param {number} y
  */
 function getAngle(x, y) {
-  return (
+  let angle =
     Math.atan(y / x) +
     // Reorient from top
-    Math.PI / 2 +
-    // Add half-turn for angles on the left-hand side
-    Math.PI * (x < 0)
-  );
-  // return angle;
+    halfPi;
+  if (x < 0) angle += Math.PI;
+  return angle;
 }
 
 let start;
 let dotX = 0;
-const speed = (1 / 30) / 32;
-let lastElapsed = 0;
+const speed = 2 / 30 / 32;
 let fps;
-let fpsUpdateDelay = 0;
 
 function update(t) {
+  fps = updateFps(t) || fps;
   dotX = (dotX + speed * t) % GRID_WIDTH;
-
-  // secondsPassed = t / 1000;
-  fpsUpdateDelay += t;
-  if (fpsUpdateDelay > 1000) {
-    fpsUpdateDelay = 0;
-    fps = Math.round(1 / (t / 1000));
-  }
-
   grid[10].fill(0);
   grid[10][Math.floor(dotX)] = 1;
 }
 
 function render() {
-  renderGrid(ctx);
-  // Draw number to the screen
-  ctx.fillStyle = 'white';
-  ctx.fillRect(0, 0, 160, 60);
-  ctx.font = '25px Arial';
-  ctx.fillStyle = 'black';
-  ctx.fillText("FPS: " + fps, 10, 30);
+  renderGrid();
+  renderFps(ctx, fps);
 }
 
 function timestamp() {
@@ -141,22 +128,16 @@ function timestamp() {
     : Date.now();
 }
 
-let ctx;
-
 let last = timestamp();
 
-function step(now_) {
-  now = timestamp();
+function step() {
+  let now = timestamp();
   if (start === undefined) start = now;
   const elapsed = now - start;
-  dt = Math.min(1000, now - last);
-  
-
+  let dt = Math.min(1000, now - last);
   update(dt);
   render();
-
   last = now;
-  
   window.requestAnimationFrame(step);
 }
 
