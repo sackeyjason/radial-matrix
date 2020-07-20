@@ -11,9 +11,9 @@ export function updateFps(t) {
 
 export function renderFps(ctx, fps) {
   // Draw number to the screen
-  ctx.fillStyle = "white";
-  ctx.fillRect(0, 0, 160, 60);
-  ctx.font = "25px Arial";
-  ctx.fillStyle = "black";
-  ctx.fillText("FPS: " + fps, 10, 30);
+  ctx.fillStyle = "#333";
+  ctx.fillRect(0, 0, 80, 32);
+  ctx.font = "14px Arial";
+  ctx.fillStyle = "#CCC";
+  ctx.fillText("FPS: " + fps, 10, 20);
 }
