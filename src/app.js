@@ -1,6 +1,8 @@
 import { updateFps, renderFps } from "./fps";
 import ModeSelector from "./mode_selector";
-import memoize from "lodash.memoize";
+// import memoize from "lodash.memoize";
+import input from "./input";
+import { getWrapX, getDoesCollide, pieces, spawn, getNext } from "./game";
 
 const SCREEN_WIDTH = 640;
 const SCREEN_HEIGHT = 480;
@@ -19,32 +21,24 @@ const circle = {
   w: (SCREEN_WIDTH - circleRadius) / 2 + circleRadius,
 };
 let ctx;
-const eventQueue = [];
+const events = [];
 
-const modeSelector = new ModeSelector(selectMode, eventQueue);
-
-let pieces = {
-  z: {
-    shape: [
-      [1, 1],
-      [0, 1, 1],
-    ],
-  },
-};
+const modeSelector = new ModeSelector(selectMode, events);
 
 let piece = {
-  x: 0,
+  x: 14,
   y: 0,
-  type: "z",
+  type: "t",
   angle: 0,
 };
+
+const wrapX = getWrapX(GRID_WIDTH);
+const doesCollide = getDoesCollide(GRID_WIDTH);
 
 const grid = new Array(GRID_HEIGHT).fill(null).map((r) => {
   return new Array(GRID_WIDTH).fill(0);
 });
-
-grid[0] = [1, 1, 1];
-grid[1] = [0, 0, 1];
+let grid2;
 
 grid[GRID_HEIGHT - 1].fill(1, 1, GRID_WIDTH - 1);
 grid[GRID_HEIGHT - 2].fill(1, 2, GRID_WIDTH - 2);
@@ -135,14 +129,6 @@ function getClickHandler() {
     const radius = Math.sqrt(dx ** 2 + dy ** 2);
     const angle = getAngle(dx, dy);
 
-    // ctx.strokeStyle = "white";
-    // ctx.lineWidth = 1;
-    // ctx.beginPath();
-    // ctx.moveTo(...SCREEN_CENTRE);
-    // ctx.lineTo(x, y);
-    // ctx.closePath();
-    // ctx.stroke();
-
     const [gridX, gridY] = getGridCoords(angle, radius);
     grid[gridY] && (grid[gridY][gridX] = 1);
   };
@@ -166,7 +152,37 @@ let shock = 0;
 let shockDecay = 0.1;
 
 function processEvent(event) {
-  if (event === "go nuts") shock = 50;
+  console.log(event);
+  if (event === "go nuts") {
+    shock = 50;
+  } else if (event[0] === "input") {
+    switch (event[1]) {
+      case "left":
+        if (doesCollide({ ...piece, x: wrapX(piece.x + 1) }, grid)) {
+          // nope
+        } else {
+          piece.x = wrapX(piece.x + 1);
+        }
+        break;
+      case "right":
+        if (doesCollide({ ...piece, x: wrapX(piece.x - 1) }, grid)) {
+          // nope
+        } else {
+          piece.x = wrapX(piece.x - 1);
+        }
+        break;
+      case "down":
+        if (doesCollide({ ...piece, y: piece.y + 1 }, grid)) {
+          // lock piece in
+        } else {
+          piece.y += 1;
+        }
+        break;
+      default:
+        break;
+    }
+  }
+  console.log(piece);
 }
 
 let start;
@@ -175,23 +191,30 @@ const speed = 2 / 30 / 32;
 let fps;
 
 function update(t) {
-  while (eventQueue.length) {
-    let event = eventQueue.pop();
+  while (events.length) {
+    let event = events.shift();
     processEvent(event);
   }
-  eventQueue.empty;
   fps = updateFps(t) || fps;
-  dotX = (dotX + speed * t) % GRID_WIDTH;
+  dotX = wrapX(dotX + speed * t);
   grid[10].fill(0);
   grid[10][Math.floor(dotX)] = 1;
 
   shock = Math.max(0, shock - shockDecay * t);
 
-  // pieceOnGrid();
+  grid2 = grid.map((line) => line.slice());
+  piece.shape.forEach((line, y) => {
+    line.forEach((cell, x) => {
+      if (cell) {
+        grid2[y + piece.y][wrapX(x + piece.x)] = 2;
+        // console.log('block at:', wrapX(x + piece.x))
+      }
+    });
+  });
 }
 
 function render() {
-  renderGrid(grid);
+  renderGrid(grid2);
   renderFps(ctx, fps);
 }
 
@@ -217,16 +240,16 @@ function step() {
 window.requestAnimationFrame(step);
 
 function init() {
-  console.log("init()");
-  console.log(grid);
-  modeSelector.init();
-  console.log("modeSelector: ", modeSelector);
   view.setAttribute("width", SCREEN_WIDTH);
   view.setAttribute("height", SCREEN_HEIGHT);
   ctx = view.getContext("2d");
-
-  renderGrid(ctx);
+  modeSelector.init();
+  input.init(document, events);
   view.addEventListener("click", getClickHandler());
+
+  piece.type = getNext();
+  piece.shape = pieces[piece.type].shape;
+  console.log(getNext());
   window.requestAnimationFrame(step);
 }
 
