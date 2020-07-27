@@ -1,3 +1,12 @@
+const DEFAULT_OPTIONS = {
+  screenWidth: 640,
+  screenHeight: 480,
+  gridWidth: 32,
+  gridHeight: 20,
+  voidRadius: 16,
+  crustThickness: 16,
+};
+
 import shuffle from "shuffle-array";
 
 const queue = [];
@@ -10,19 +19,52 @@ export function getWrapX(GRID_WIDTH) {
   };
 }
 
+export function getPieceGridCoords(piece, grid) {
+  const wrapX = getWrapX(grid[0].length);
+  let coords = [];
+
+  piece.shape.forEach((line, y) => {
+    line.forEach((block, x) => {
+      if (block) {
+        coords.push([wrapX(x + piece.x), y + piece.y]);
+      }
+    });
+  });
+
+  coords = coords.map(([x, y]) => {
+    if (piece.angle === 0) return [x, y];
+    let xTranslation = piece.x + piece.centre[0];
+    let yTranslation = piece.y + piece.centre[1];
+    let _x = x - xTranslation;
+    let _y = y - yTranslation;
+
+    if (piece.angle === 1) {
+      [_x, _y] = [_y, -_x];
+    } else if (piece.angle === 2) {
+      [_x, _y] = [-_x, -_y];
+    } else if (piece.angle === 3) {
+      [_x, _y] = [-_y, _x];
+    }
+
+    _x += xTranslation;
+    _y += yTranslation;
+    return [wrapX(_x), _y];
+  });
+
+  return coords;
+}
+
+// use getPieceGridCoords
 export function getDoesCollide(GRID_WIDTH) {
-  const wrapX = getWrapX(GRID_WIDTH);
   return (piece, grid) => {
-    let shape = piece.shape;
+    const coords = getPieceGridCoords(piece, grid);
+    console.log("coords: ", coords);
     let collides;
-    // rotate shape :)
-    shape.forEach((line, y) => {
-      line.forEach((block, x) => {
-        let _y = y + piece.y;
-        if (block && grid[_y] && grid[_y][wrapX(x + piece.x)]) {
-          collides = true;
-        }
-      });
+    coords.forEach(([x, y]) => {
+      if (y >= grid.length) collides = true;
+      if (grid[y] && grid[y][x]) {
+        collides = true;
+      }
     });
     return collides;
   };
@@ -30,49 +72,65 @@ export function getDoesCollide(GRID_WIDTH) {
 
 export const pieces = {
   i: {
-    shape: [
-      [1, 1, 1, 1],
-    ],
+    shape: [[1, 1, 1, 1]],
+    centre: [1.5, 0.5],
   },
   t: {
     shape: [
       [0, 1],
       [1, 1, 1],
     ],
+    centre: [1, 1],
   },
   z: {
     shape: [
       [1, 1],
       [0, 1, 1],
     ],
+    centre: [1, 1],
   },
   s: {
     shape: [
       [0, 1, 1],
       [1, 1],
     ],
+    centre: [1, 1],
   },
   o: {
     shape: [
       [1, 1],
       [1, 1],
     ],
+    centre: [0.5, 0.5],
   },
   l: {
     shape: [
       [0, 0, 1],
       [1, 1, 1],
     ],
+    centre: [1, 1],
   },
   j: {
     shape: [
       [1, 0, 0],
       [1, 1, 1],
     ],
+    centre: [1, 1],
   },
 };
 
-export function spawn(piece) {}
+export function spawn() {
+  const piece = {
+    x: 14,
+    y: 0,
+    type: getNext(),
+    angle: 0,
+  };
+  piece.shape = pieces[piece.type].shape;
+  piece.centre = pieces[piece.type].centre;
+  queue.shift();
+  return piece;
+}
 
 export function getNext() {
   if (queue.length === 0) {
@@ -81,4 +139,14 @@ export function getNext() {
     queue.push(...pieceTypes);
   }
   return queue[0];
+}
+
+export function removeLines(lines, grid) {
+  lines.reverse().forEach((y) => {
+    grid.splice(y, 1);
+  });
+  for (let i = 0; i < lines.length; i++) {
+    let newEmptyRow = new Array(32).fill(0);
+    grid.unshift(newEmptyRow);
+  }
 }

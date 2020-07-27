@@ -2,7 +2,16 @@ import { updateFps, renderFps } from "./fps";
 import ModeSelector from "./mode_selector";
 // import memoize from "lodash.memoize";
 import input from "./input";
-import { getWrapX, getDoesCollide, pieces, spawn, getNext } from "./game";
+import {
+  getWrapX,
+  getPieceGridCoords,
+  getDoesCollide,
+  pieces,
+  spawn,
+  getNext,
+  removeLines,
+} from "./game";
+import { getCircleToGrid, getAngle } from "./geometry";
 
 const SCREEN_WIDTH = 640;
 const SCREEN_HEIGHT = 480;
@@ -24,6 +33,8 @@ let ctx;
 const events = [];
 
 const modeSelector = new ModeSelector(selectMode, events);
+
+let clearing = null;
 
 let piece = {
   x: 14,
@@ -48,13 +59,20 @@ function gridLookup(x, y) {
 }
 // let lookup = memoize(gridLookup, (x, y) => `${x},${y}`);
 
-function getGridCoords(angle, radius) {
-  const gridX = Math.floor((angle / (2 * Math.PI)) * GRID_WIDTH);
-  const gridY = Math.floor(
-    ((radius - VOID_RADIUS) / ACTIVE_RADIUS) * GRID_HEIGHT
-  );
-  return [gridX, gridY];
-}
+const getGridCoords = getCircleToGrid({
+  GRID_WIDTH,
+  GRID_HEIGHT,
+  VOID_RADIUS,
+  ACTIVE_RADIUS,
+});
+
+// function getGridCoords(angle, radius) {
+//   const gridX = Math.floor((angle / (2 * Math.PI)) * GRID_WIDTH);
+//   const gridY = Math.floor(
+//     ((radius - VOID_RADIUS) / ACTIVE_RADIUS) * GRID_HEIGHT
+//   );
+//   return [gridX, gridY];
+// }
 
 function renderGrid(grid) {
   ctx.fillStyle = "rgba(0, 0, 0, 1)";
@@ -100,9 +118,21 @@ function renderGrid(grid) {
       // if (gridLookup(gridX, gridY)) {
       // if (lookup(gridX, gridY)) {
       if (grid[gridY] && grid[gridY][gridX]) {
+        const activePiece = grid[gridY][gridX] === 2;
+        const clearingRow = grid[gridY][gridX] === 3;
         if (modeSelector.mode === "colour" || modeSelector.mode === "nuts") {
           let hue2 = (hue + (angle / (2 * Math.PI)) * 360) % 360;
           ctx.fillStyle = `hsla(${hue2}deg, 100%, 80%, 1.0)`;
+        } else {
+          if (activePiece) {
+            ctx.fillStyle = `rgb(255,100,50)`;
+          } else if (clearingRow) {
+            fuzz = Math.random() * 3 - 1.5;
+            let hue2 = (hue + (angle / (2 * Math.PI)) * 360) % 360;
+            ctx.fillStyle = `hsla(${hue2}deg, 100%, 80%, 1.0)`;
+          } else {
+            ctx.fillStyle = `rgb(200,200,200)`;
+          }
         }
         ctx.fillRect(x, y, 2 + fuzz, pixelHeight + fuzz);
       }
@@ -134,18 +164,11 @@ function getClickHandler() {
   };
 }
 
-const halfPi = Math.PI / 2;
-/**
- * Get angle from top, clockwise, positive
- * @param {number} x
- * @param {number} y
- */
-function getAngle(x, y) {
-  // reorient from top
-  let angle = Math.atan(y / x) + halfPi;
-  // flip around left-oriented angles
-  if (x < 0) angle += Math.PI;
-  return angle;
+function lockPieceIn() {
+  getPieceGridCoords(piece, grid).forEach(([x, y]) => {
+    if (grid[y]) grid[y][x] = 1;
+  });
+  piece = null;
 }
 
 let shock = 0;
@@ -156,33 +179,44 @@ function processEvent(event) {
   if (event === "go nuts") {
     shock = 50;
   } else if (event[0] === "input") {
-    switch (event[1]) {
-      case "left":
-        if (doesCollide({ ...piece, x: wrapX(piece.x + 1) }, grid)) {
-          // nope
-        } else {
-          piece.x = wrapX(piece.x + 1);
-        }
-        break;
-      case "right":
-        if (doesCollide({ ...piece, x: wrapX(piece.x - 1) }, grid)) {
-          // nope
-        } else {
-          piece.x = wrapX(piece.x - 1);
-        }
-        break;
-      case "down":
-        if (doesCollide({ ...piece, y: piece.y + 1 }, grid)) {
-          // lock piece in
-        } else {
-          piece.y += 1;
-        }
-        break;
-      default:
-        break;
+    if (piece) {
+      switch (event[1]) {
+        case "left":
+          if (doesCollide({ ...piece, x: wrapX(piece.x + 1) }, grid)) {
+            // clunk
+          } else {
+            piece.x = wrapX(piece.x + 1);
+          }
+          break;
+        case "right":
+          if (doesCollide({ ...piece, x: wrapX(piece.x - 1) }, grid)) {
+            // clonk
+          } else {
+            piece.x = wrapX(piece.x - 1);
+          }
+          break;
+        case "down":
+          if (doesCollide({ ...piece, y: piece.y + 1 }, grid)) {
+            lockPieceIn();
+          } else {
+            piece.y += 1;
+          }
+          break;
+        case 'a':
+          piece.angle = (piece.angle + 1) % 4;
+          break;
+        case 'b':
+          piece.angle = (piece.angle - 1);
+          if (piece.angle < 0) piece.angle = 3;
+          break;
+        default:
+          break;
+      }
     }
+  } else if (event[0] === "clear") {
   }
   console.log(piece);
+  console.log(piece && getPieceGridCoords(piece, grid));
 }
 
 let start;
@@ -197,20 +231,41 @@ function update(t) {
   }
   fps = updateFps(t) || fps;
   dotX = wrapX(dotX + speed * t);
-  grid[10].fill(0);
-  grid[10][Math.floor(dotX)] = 1;
 
   shock = Math.max(0, shock - shockDecay * t);
 
   grid2 = grid.map((line) => line.slice());
-  piece.shape.forEach((line, y) => {
-    line.forEach((cell, x) => {
-      if (cell) {
-        grid2[y + piece.y][wrapX(x + piece.x)] = 2;
-        // console.log('block at:', wrapX(x + piece.x))
+  if (piece) {
+    const pieceCoords = getPieceGridCoords(piece, grid);
+    pieceCoords.forEach(([x, y]) => {
+      if (y < 0) return;
+      if (grid2[y]) grid2[y][x] = 2;
+    });
+  } else if (clearing) {
+    // animating
+    console.log("clearing animation...", clearing);
+    if (timestamp() - clearing.at >= 500) {
+      removeLines(clearing.lines, grid);
+      grid2 = grid;
+      clearing = null;
+    }
+  } else {
+    const completeLines = [];
+    grid2.forEach((line, y) => {
+      if (line.find((block) => block === 0) === undefined) {
+        completeLines.push(y);
+        grid[y].fill(3);
       }
     });
-  });
+    if (completeLines.length) {
+      clearing = {
+        lines: completeLines,
+        at: timestamp(),
+      };
+    } else {
+      piece = spawn();
+    }
+  }
 }
 
 function render() {
@@ -247,8 +302,7 @@ function init() {
   input.init(document, events);
   view.addEventListener("click", getClickHandler());
 
-  piece.type = getNext();
-  piece.shape = pieces[piece.type].shape;
+  piece = spawn();
   console.log(getNext());
   window.requestAnimationFrame(step);
 }

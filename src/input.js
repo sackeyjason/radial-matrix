@@ -3,6 +3,8 @@ const keyMap = {
   38: 'up',
   39: 'right',
   40: 'down',
+  90: 'b',
+  88: 'a'
 };
 
 const input = {
@@ -10,7 +12,6 @@ const input = {
     el.addEventListener("keydown", (event) => {
       const value = keyMap[event.keyCode];
       if (value) events.push(["input", value]);
-      // events.push(event);
     });
   },
 };
