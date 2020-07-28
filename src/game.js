@@ -20,19 +20,20 @@ export function getWrapX(GRID_WIDTH) {
 }
 
 export function getPieceGridCoords(piece, grid) {
+  // console.log('grid: ', grid[0]);
   const wrapX = getWrapX(grid[0].length);
   let coords = [];
 
   piece.shape.forEach((line, y) => {
     line.forEach((block, x) => {
       if (block) {
-        coords.push([wrapX(x + piece.x), y + piece.y]);
+        coords.push([x + piece.x, y + piece.y]);
       }
     });
   });
 
   coords = coords.map(([x, y]) => {
-    if (piece.angle === 0) return [x, y];
+    if (piece.angle === 0) return [wrapX(x), y];
     let xTranslation = piece.x + piece.centre[0];
     let yTranslation = piece.y + piece.centre[1];
     let _x = x - xTranslation;
