@@ -16,7 +16,7 @@ import { getCircleToGrid, getAngle } from "./geometry";
 const SCREEN_WIDTH = 640;
 const SCREEN_HEIGHT = 480;
 const GRID_WIDTH = 32;
-const GRID_HEIGHT = 20;
+const GRID_HEIGHT = 14;
 const VOID_RADIUS = 16;
 const CRUST_THICKNESS = 16;
 const SCREEN_CENTRE = [(SCREEN_WIDTH - 1) / 2, (SCREEN_HEIGHT - 1) / 2];
@@ -32,7 +32,7 @@ const circle = {
 let ctx;
 const events = [];
 
-const modeSelector = new ModeSelector(selectMode, events);
+const modeSelector = {};
 
 let clearing = null;
 
@@ -175,7 +175,7 @@ let shock = 0;
 let shockDecay = 0.1;
 
 function processEvent(event) {
-  console.log(event);
+  // console.log(event);
   if (event === "go nuts") {
     shock = 50;
   } else if (event[0] === "input") {
@@ -202,10 +202,10 @@ function processEvent(event) {
             piece.y += 1;
           }
           break;
-        case 'a':
+        case 'rotateR':
           piece.angle = (piece.angle + 1) % 4;
           break;
-        case 'b':
+        case 'rotateL':
           piece.angle = (piece.angle - 1);
           if (piece.angle < 0) piece.angle = 3;
           break;
@@ -215,8 +215,8 @@ function processEvent(event) {
     }
   } else if (event[0] === "clear") {
   }
-  console.log(piece);
-  console.log(piece && getPieceGridCoords(piece, grid));
+  // console.log(piece);
+  // console.log(piece && getPieceGridCoords(piece, grid));
 }
 
 let start;
@@ -243,7 +243,6 @@ function update(t) {
     });
   } else if (clearing) {
     // animating
-    console.log("clearing animation...", clearing);
     if (timestamp() - clearing.at >= 500) {
       removeLines(clearing.lines, grid);
       grid2 = grid;
@@ -298,7 +297,7 @@ function init() {
   view.setAttribute("width", SCREEN_WIDTH);
   view.setAttribute("height", SCREEN_HEIGHT);
   ctx = view.getContext("2d");
-  modeSelector.init();
+  // modeSelector.init();
   input.init(document, events);
   view.addEventListener("click", getClickHandler());
 

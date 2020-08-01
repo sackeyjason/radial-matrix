@@ -56,10 +56,9 @@ export function getPieceGridCoords(piece, grid) {
 }
 
 // use getPieceGridCoords
-export function getDoesCollide(GRID_WIDTH) {
+export function getDoesCollide() {
   return (piece, grid) => {
     const coords = getPieceGridCoords(piece, grid);
-    console.log("coords: ", coords);
     let collides;
     coords.forEach(([x, y]) => {
       if (y >= grid.length) collides = true;
