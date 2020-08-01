@@ -5,13 +5,13 @@ import input from "./input";
 import {
   getWrapX,
   getPieceGridCoords,
-  getDoesCollide,
-  pieces,
+  doesCollide,
   spawn,
   getNext,
   removeLines,
 } from "./game";
 import { getCircleToGrid, getAngle } from "./geometry";
+import h from "hyperscript";
 
 const SCREEN_WIDTH = 640;
 const SCREEN_HEIGHT = 480;
@@ -36,23 +36,22 @@ const modeSelector = {};
 
 let clearing = null;
 
-let piece = {
-  x: 14,
-  y: 0,
-  type: "t",
-  angle: 0,
-};
+let piece = null;
+
+let mainMenu = true;
 
 const wrapX = getWrapX(GRID_WIDTH);
-const doesCollide = getDoesCollide(GRID_WIDTH);
 
-const grid = new Array(GRID_HEIGHT).fill(null).map((r) => {
+const grid = new Array(GRID_HEIGHT).fill(null).map(() => {
   return new Array(GRID_WIDTH).fill(0);
 });
 let grid2;
 
-grid[GRID_HEIGHT - 1].fill(1, 1, GRID_WIDTH - 1);
-grid[GRID_HEIGHT - 2].fill(1, 2, GRID_WIDTH - 2);
+function clearGrid() {
+  grid.forEach(row => {
+    row.fill(0);
+  });
+}
 
 function gridLookup(x, y) {
   return grid[y] && grid[y][x];
@@ -65,14 +64,6 @@ const getGridCoords = getCircleToGrid({
   VOID_RADIUS,
   ACTIVE_RADIUS,
 });
-
-// function getGridCoords(angle, radius) {
-//   const gridX = Math.floor((angle / (2 * Math.PI)) * GRID_WIDTH);
-//   const gridY = Math.floor(
-//     ((radius - VOID_RADIUS) / ACTIVE_RADIUS) * GRID_HEIGHT
-//   );
-//   return [gridX, gridY];
-// }
 
 function renderGrid(grid) {
   ctx.fillStyle = "rgba(0, 0, 0, 1)";
@@ -179,7 +170,16 @@ function processEvent(event) {
   if (event === "go nuts") {
     shock = 50;
   } else if (event[0] === "input") {
-    if (piece) {
+    if (event[1] === "enter") {
+      if (mainMenu) {
+        clearGrid();
+        mainMenu = false;
+        const menuEl = document.querySelector('.main-menu');
+        menuEl.parentElement.removeChild(menuEl);
+        return;
+      }
+    }
+    if (piece && !mainMenu) {
       switch (event[1]) {
         case "left":
           if (doesCollide({ ...piece, x: wrapX(piece.x + 1) }, grid)) {
@@ -202,11 +202,11 @@ function processEvent(event) {
             piece.y += 1;
           }
           break;
-        case 'rotateR':
+        case "rotateR":
           piece.angle = (piece.angle + 1) % 4;
           break;
-        case 'rotateL':
-          piece.angle = (piece.angle - 1);
+        case "rotateL":
+          piece.angle = piece.angle - 1;
           if (piece.angle < 0) piece.angle = 3;
           break;
         default:
@@ -235,6 +235,7 @@ function update(t) {
   shock = Math.max(0, shock - shockDecay * t);
 
   grid2 = grid.map((line) => line.slice());
+  
   if (piece) {
     const pieceCoords = getPieceGridCoords(piece, grid);
     pieceCoords.forEach(([x, y]) => {
@@ -261,15 +262,29 @@ function update(t) {
         lines: completeLines,
         at: timestamp(),
       };
-    } else {
+    } else if (!mainMenu) {
       piece = spawn();
+      if (doesCollide(piece, grid)) {
+        // high score?
+        piece = null;
+        showMainMenu();
+      }
     }
   }
 }
 
+function showMainMenu() {
+  mainMenu = true;
+  const menuScreen = h("div.main-menu", [
+    h("div", [h("h1", "Orbital"), h("h2", "Radial Matrix")]),
+    h("nav", h("div", "Hit Enter/Tap to start")),
+  ]);
+  document.querySelector("body").appendChild(menuScreen);
+}
+
 function render() {
   renderGrid(grid2);
-  renderFps(ctx, fps);
+  // renderFps(ctx, fps);
 }
 
 function timestamp() {
@@ -300,9 +315,11 @@ function init() {
   // modeSelector.init();
   input.init(document, events);
   view.addEventListener("click", getClickHandler());
+  document.addEventListener("click", () => events.push(["input", "enter"]));
 
   piece = spawn();
   console.log(getNext());
+  showMainMenu();
   window.requestAnimationFrame(step);
 }
 

@@ -3,9 +3,12 @@ const keyMap = {
   38: "rotateR",
   39: "right",
   40: "down",
+
   90: "rotateL",
   88: "rotateR",
   32: "hardDrop",
+
+  13: "enter",
 };
 
 const input = {

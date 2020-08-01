@@ -56,18 +56,16 @@ export function getPieceGridCoords(piece, grid) {
 }
 
 // use getPieceGridCoords
-export function getDoesCollide() {
-  return (piece, grid) => {
-    const coords = getPieceGridCoords(piece, grid);
-    let collides;
-    coords.forEach(([x, y]) => {
-      if (y >= grid.length) collides = true;
-      if (grid[y] && grid[y][x]) {
-        collides = true;
-      }
-    });
-    return collides;
-  };
+export function doesCollide(piece, grid) {
+  const coords = getPieceGridCoords(piece, grid);
+  let collides;
+  coords.forEach(([x, y]) => {
+    if (y >= grid.length) collides = true;
+    if (grid[y] && grid[y][x]) {
+      collides = true;
+    }
+  });
+  return collides;
 }
 
 export const pieces = {

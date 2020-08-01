@@ -1,6 +1,7 @@
 :root {
   background: #111;
   color: #fff;
+  font-family: System, sans-serif;
 }
 
 body {
@@ -11,7 +12,7 @@ body {
 .page {
   display: flex;
   justify-content: center;
-  height: 100vh;
+  max-height: 100vh;
   flex-flow: row nowrap;
 }
 
@@ -20,6 +21,8 @@ body {
   max-width: 100%;
   order: 1;
   align-self: center;
+  max-height: calc(100vh - 50px);
+  object-fit: contain;
 }
 
 [class^="controls-"] {
@@ -29,6 +32,7 @@ body {
   align-content: flex-start;
   height: 50%;
   align-self: flex-end;
+  user-select: none;
 }
 
 .controls-l {
@@ -81,4 +85,23 @@ body {
   [class^="controls-"] {
     display: none;
   }
+}
+
+.main-menu {
+  position: absolute;
+  left: 0;
+  right: 0;
+  margin: 0 auto;
+  top: 0px;
+  width: 90%;
+  height: 90%;
+  background-color: rgba(0,0,0,0.8);
+  text-transform: uppercase;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+nav {
+  margin-top: 4rem;
 }
