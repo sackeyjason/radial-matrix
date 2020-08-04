@@ -3,12 +3,15 @@ import ModeSelector from "./mode_selector";
 // import memoize from "lodash.memoize";
 import input from "./input";
 import {
+  start,
   getWrapX,
   getPieceGridCoords,
   doesCollide,
   spawn,
   getNext,
   removeLines,
+  calculatePoints,
+  tryRotate
 } from "./game";
 import { getCircleToGrid, getAngle } from "./geometry";
 import h from "hyperscript";
@@ -39,6 +42,7 @@ let clearing = null;
 let piece = null;
 
 let mainMenu = true;
+let round = null;
 
 const wrapX = getWrapX(GRID_WIDTH);
 
@@ -48,7 +52,7 @@ const grid = new Array(GRID_HEIGHT).fill(null).map(() => {
 let grid2;
 
 function clearGrid() {
-  grid.forEach(row => {
+  grid.forEach((row) => {
     row.fill(0);
   });
 }
@@ -162,20 +166,27 @@ function lockPieceIn() {
   piece = null;
 }
 
+function newGame() {
+  round = new start();
+  console.log("round: ", round);
+  clearGrid();
+  mainMenu = false;
+  const menuEl = document.querySelector(".main-menu");
+  menuEl.parentElement.removeChild(menuEl);
+}
+
 let shock = 0;
 let shockDecay = 0.1;
 
 function processEvent(event) {
   // console.log(event);
+
   if (event === "go nuts") {
     shock = 50;
   } else if (event[0] === "input") {
     if (event[1] === "enter") {
       if (mainMenu) {
-        clearGrid();
-        mainMenu = false;
-        const menuEl = document.querySelector('.main-menu');
-        menuEl.parentElement.removeChild(menuEl);
+        newGame();
         return;
       }
     }
@@ -203,11 +214,13 @@ function processEvent(event) {
           }
           break;
         case "rotateR":
-          piece.angle = (piece.angle + 1) % 4;
+          //piece.angle = (piece.angle + 1) % 4;
+          piece.rotation = 1;
           break;
         case "rotateL":
-          piece.angle = piece.angle - 1;
-          if (piece.angle < 0) piece.angle = 3;
+          piece.rotation = -1;
+          // piece.angle = piece.angle - 1;
+          // if (piece.angle < 0) piece.angle = 3;
           break;
         default:
           break;
@@ -219,10 +232,13 @@ function processEvent(event) {
   // console.log(piece && getPieceGridCoords(piece, grid));
 }
 
-let start;
+
+
+let startTime;
 let dotX = 0;
 const speed = 2 / 30 / 32;
 let fps;
+let fallingSpeed = 0; //0.001;
 
 function update(t) {
   while (events.length) {
@@ -235,8 +251,33 @@ function update(t) {
   shock = Math.max(0, shock - shockDecay * t);
 
   grid2 = grid.map((line) => line.slice());
-  
+
   if (piece) {
+    piece.falling += t * fallingSpeed;
+    if (piece.falling > piece.fallNext) {
+      piece.fallNext++;
+      if (doesCollide({ ...piece, y: piece.y + 1 }, grid)) {
+        lockPieceIn();
+        return;
+      } else {
+        piece.y += 1;
+      }
+    }
+    if (piece.rotation && piece.type !== "o") {
+      // basic attempt
+      const pieceRotated = {
+        ...piece,
+        rotation: 0,
+        rotatedFrom: piece.angle,
+        angle: { "-1": 3, 0: 0, 1: 1, 2: 2, 3: 3, 4: 0 }[
+          piece.angle + piece.rotation
+        ],
+      };
+      const rotateAttempt = tryRotate(pieceRotated, grid);
+      piece = rotateAttempt || piece;
+      piece.rotation = 0;
+    }
+
     const pieceCoords = getPieceGridCoords(piece, grid);
     pieceCoords.forEach(([x, y]) => {
       if (y < 0) return;
@@ -262,22 +303,28 @@ function update(t) {
         lines: completeLines,
         at: timestamp(),
       };
+      const p = calculatePoints(completeLines.length);
+      // check level
+      // check last piece to detect T-spins, room to manoeuvre
+      round.addScore(p, { level: 1, lastPiece: null });
     } else if (!mainMenu) {
       piece = spawn();
       if (doesCollide(piece, grid)) {
+        // GAME OVER
         // high score?
         piece = null;
-        showMainMenu();
+        showMainMenu("GAME OVER", { lastScore: round.score });
       }
     }
   }
 }
 
-function showMainMenu() {
+function showMainMenu(message, etc) {
   mainMenu = true;
   const menuScreen = h("div.main-menu", [
     h("div", [h("h1", "Orbital"), h("h2", "Radial Matrix")]),
     h("nav", h("div", "Hit Enter/Tap to start")),
+    etc && h("div.lastScore", etc.lastScore),
   ]);
   document.querySelector("body").appendChild(menuScreen);
 }
@@ -297,8 +344,8 @@ let last = timestamp();
 
 function step() {
   let now = timestamp();
-  if (start === undefined) start = now;
-  const elapsed = now - start;
+  if (startTime === undefined) startTime = now;
+  const elapsed = now - startTime;
   let dt = Math.min(1000, now - last);
   update(dt);
   render();
@@ -317,7 +364,6 @@ function init() {
   view.addEventListener("click", getClickHandler());
   document.addEventListener("click", () => events.push(["input", "enter"]));
 
-  piece = spawn();
   console.log(getNext());
   showMainMenu();
   window.requestAnimationFrame(step);

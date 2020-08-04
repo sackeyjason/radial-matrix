@@ -123,6 +123,8 @@ export function spawn() {
     y: 0,
     type: getNext(),
     angle: 0,
+    falling: 0,
+    fallNext: 1,
   };
   piece.shape = pieces[piece.type].shape;
   piece.centre = pieces[piece.type].centre;
@@ -146,5 +148,164 @@ export function removeLines(lines, grid) {
   for (let i = 0; i < lines.length; i++) {
     let newEmptyRow = new Array(32).fill(0);
     grid.unshift(newEmptyRow);
+  }
+}
+
+export function calculatePoints(lines, etc) {
+  if (lines === 1) {
+    return 100;
+  } else if (lines === 2) {
+    return 300;
+  } else if (lines === 3) {
+    return 500;
+  } else {
+    // TETRIS
+    return 800;
+  }
+}
+
+export function start() {
+  this.score = 0;
+
+  this.addScore = (points) => {
+    this.score += points;
+  };
+}
+
+const I_WALLKICK_DATA = {
+  "01": [
+    [0, 0],
+    [-2, 0],
+    [1, 0],
+    [-2, -1],
+    [1, 2],
+  ],
+  "10": [
+    [0, 0],
+    [2, 0],
+    [-1, 0],
+    [2, 1],
+    [-1, -2],
+  ],
+  "12": [
+    [0, 0],
+    [-1, 0],
+    [2, 0],
+    [-1, 2],
+    [2, -1],
+  ],
+  "21": [
+    [0, 0],
+    [1, 0],
+    [-2, 0],
+    [1, -2],
+    [-2, 1],
+  ],
+  "23": [
+    [0, 0],
+    [2, 0],
+    [-1, 0],
+    [2, 1],
+    [-1, -2],
+  ],
+  "32": [
+    [0, 0],
+    [-2, 0],
+    [1, 0],
+    [-2, -1],
+    [1, 2],
+  ],
+  "30": [
+    [0, 0],
+    [1, 0],
+    [-2, 0],
+    [1, -2],
+    [-2, 1],
+  ],
+  "03": [
+    [0, 0],
+    [-1, 0],
+    [2, 0],
+    [-1, 2],
+    [2, -1],
+  ],
+};
+
+const OTHER_WALLKICK_DATA = {
+  "01": [
+    [0, 0],
+    [-1, 0],
+    [-1, 1],
+    [0, -2],
+    [-1, -2],
+  ],
+  "10": [
+    [0, 0],
+    [1, 0],
+    [1, -1],
+    [0, 2],
+    [1, 2],
+  ],
+  "12": [
+    [0, 0],
+    [1, 0],
+    [1, -1],
+    [0, 2],
+    [1, 2],
+  ],
+  "21": [
+    [0, 0],
+    [-1, 0],
+    [-1, 1],
+    [0, -2],
+    [-1, -2],
+  ],
+  "23": [
+    [0, 0],
+    [1, 0],
+    [1, 1],
+    [0, -2],
+    [1, -2],
+  ],
+  "32": [
+    [0, 0],
+    [-1, 0],
+    [-1, -1],
+    [0, 2],
+    [-1, 2],
+  ],
+  "30": [
+    [0, 0],
+    [-1, 0],
+    [-1, -1],
+    [0, 2],
+    [-1, 2],
+  ],
+  "03": [
+    [0, 0],
+    [1, 0],
+    [1, 1],
+    [0, -2],
+    [1, -2],
+  ],
+};
+
+export function tryRotate(piece, grid) {
+  console.log('piece: ', piece);
+  const wrapX = getWrapX(grid[0].length);
+  let data = piece.type === "i" ? I_WALLKICK_DATA : OTHER_WALLKICK_DATA;
+  let sequence = data[`${piece.rotatedFrom}${piece.angle}`];
+  console.log('sequence: ', sequence);
+  for (let i = 0; i < sequence.length; i++) {
+    let d = sequence[i];
+    console.log('d: ', d);
+    let shiftedPiece = {
+      ...piece,
+      x: wrapX(piece.x - d[0]), // mirror x axis
+      y: piece.y - d[1]
+    };
+    if (!doesCollide(shiftedPiece, grid)) {
+      return shiftedPiece;
+    }
   }
 }
