@@ -77,6 +77,7 @@ export const pieces = {
     shape: [
       [0, 1],
       [1, 1, 1],
+      [1]
     ],
     centre: [1, 1],
   },
@@ -171,6 +172,9 @@ export function start() {
     this.score += points;
   };
 }
+
+// Data source: https://tetris.fandom.com/wiki/SRS
+// "Super Rotation System"
 
 const I_WALLKICK_DATA = {
   "01": [
