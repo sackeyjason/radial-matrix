@@ -76,8 +76,7 @@ export const pieces = {
   t: {
     shape: [
       [0, 1],
-      [1, 1, 1],
-      [1]
+      [1, 1, 1]
     ],
     centre: [1, 1],
   },
@@ -167,10 +166,23 @@ export function calculatePoints(lines, etc) {
 
 export function start() {
   this.score = 0;
+  this.lines = 0;
+  this.level = 1;
 
   this.addScore = (points) => {
     this.score += points;
-  };
+  }
+
+  /**
+   * Awarn points, increase linecount and level
+   * @param {*} linesCleared 
+   * @param {*} etc 
+   */
+  this.awardPoints = (linesCleared, etc) => {
+    const points = calculatePoints (linesCleared, etc);
+    this.score += points;
+    this.lines += linesCleared;
+  }
 }
 
 // Data source: https://tetris.fandom.com/wiki/SRS
