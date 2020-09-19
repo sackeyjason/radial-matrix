@@ -11,7 +11,8 @@ import {
   getNext,
   removeLines,
   calculatePoints,
-  tryRotate
+  tryRotate,
+  getColour
 } from "./game";
 import { getCircleToGrid, getAngle } from "./geometry";
 import h from "hyperscript";
@@ -113,20 +114,20 @@ function renderGrid(grid) {
       // if (gridLookup(gridX, gridY)) {
       // if (lookup(gridX, gridY)) {
       if (grid[gridY] && grid[gridY][gridX]) {
-        const activePiece = grid[gridY][gridX] === 2;
+        const hasShape = grid[gridY][gridX].shape;
         const clearingRow = grid[gridY][gridX] === 3;
         if (modeSelector.mode === "colour" || modeSelector.mode === "nuts") {
           let hue2 = (hue + (angle / (2 * Math.PI)) * 360) % 360;
           ctx.fillStyle = `hsla(${hue2}deg, 100%, 80%, 1.0)`;
         } else {
-          if (activePiece) {
-            ctx.fillStyle = `rgb(255,100,50)`;
+          if (hasShape) {
+            ctx.fillStyle = getColour(grid[gridY][gridX]);
           } else if (clearingRow) {
             fuzz = Math.random() * 3 - 1.5;
             let hue2 = (hue + (angle / (2 * Math.PI)) * 360) % 360;
             ctx.fillStyle = `hsla(${hue2}deg, 100%, 80%, 1.0)`;
           } else {
-            ctx.fillStyle = `rgb(200,200,200)`;
+            ctx.fillStyle = grid[gridY][gridX].colour || `rgb(200,200,200)`;
           }
         }
         ctx.fillRect(x, y, 2 + fuzz, pixelHeight + fuzz);
@@ -160,8 +161,11 @@ function getClickHandler() {
 }
 
 function lockPieceIn() {
+  if (piece.type === "seed") {
+
+  }
   getPieceGridCoords(piece, grid).forEach(([x, y]) => {
-    if (grid[y]) grid[y][x] = 1;
+    if (grid[y]) grid[y][x] = { colour: getColour(piece, { dim: true }) };
   });
   piece = null;
 }
@@ -228,11 +232,7 @@ function processEvent(event) {
     }
   } else if (event[0] === "clear") {
   }
-  // console.log(piece);
-  // console.log(piece && getPieceGridCoords(piece, grid));
 }
-
-
 
 let startTime;
 let dotX = 0;
@@ -282,7 +282,7 @@ function update(t) {
     const pieceCoords = getPieceGridCoords(piece, grid);
     pieceCoords.forEach(([x, y]) => {
       if (y < 0) return;
-      if (grid2[y]) grid2[y][x] = 2;
+      if (grid2[y]) grid2[y][x] = piece;
     });
   } else if (clearing) {
     // animating
@@ -304,10 +304,15 @@ function update(t) {
         lines: completeLines,
         at: timestamp(),
       };
-      const p = calculatePoints(completeLines.length);
+      const pointsAwarded = calculatePoints(completeLines.length, {
+        level,
+        lastPiece: null,
+      });
+      const level = round.level;
+
       // check level
       // check last piece to detect T-spins, room to manoeuvre
-      round.addScore(p, { level: 1, lastPiece: null });
+      round.addScore(pointsAwarded);
     } else if (!mainMenu) {
       piece = spawn();
       if (doesCollide(piece, grid)) {
@@ -353,8 +358,6 @@ function step() {
   last = now;
   window.requestAnimationFrame(step);
 }
-
-window.requestAnimationFrame(step);
 
 function init() {
   view.setAttribute("width", SCREEN_WIDTH);

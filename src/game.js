@@ -1,3 +1,11 @@
+import {
+  pieces,
+  seeds,
+  OTHER_WALLKICK_DATA,
+  I_WALLKICK_DATA,
+} from "./game_data";
+import shuffle from "shuffle-array";
+
 const DEFAULT_OPTIONS = {
   screenWidth: 640,
   screenHeight: 480,
@@ -6,8 +14,6 @@ const DEFAULT_OPTIONS = {
   voidRadius: 16,
   crustThickness: 16,
 };
-
-import shuffle from "shuffle-array";
 
 const queue = [];
 
@@ -68,74 +74,42 @@ export function doesCollide(piece, grid) {
   return collides;
 }
 
-export const pieces = {
-  i: {
-    shape: [[1, 1, 1, 1]],
-    centre: [1.5, 0.5],
-  },
-  t: {
-    shape: [
-      [0, 1],
-      [1, 1, 1]
-    ],
-    centre: [1, 1],
-  },
-  z: {
-    shape: [
-      [1, 1],
-      [0, 1, 1],
-    ],
-    centre: [1, 1],
-  },
-  s: {
-    shape: [
-      [0, 1, 1],
-      [1, 1],
-    ],
-    centre: [1, 1],
-  },
-  o: {
-    shape: [
-      [1, 1],
-      [1, 1],
-    ],
-    centre: [0.5, 0.5],
-  },
-  l: {
-    shape: [
-      [0, 0, 1],
-      [1, 1, 1],
-    ],
-    centre: [1, 1],
-  },
-  j: {
-    shape: [
-      [1, 0, 0],
-      [1, 1, 1],
-    ],
-    centre: [1, 1],
-  },
-};
-
 export function spawn() {
-  const piece = {
-    x: 14,
-    y: 0,
-    type: getNext(),
-    angle: 0,
-    falling: 0,
-    fallNext: 1,
-  };
-  piece.shape = pieces[piece.type].shape;
-  piece.centre = pieces[piece.type].centre;
+  const next = getNext();
   queue.shift();
-  return piece;
+  if (next.type === "seed") {
+    return {
+      x: 14,
+      y: 0,
+      type: "seed",
+      angle: 0,
+      falling: 0,
+      fallNext: 1,
+      shape: [[1]],
+      centre: [0, 0],
+    };
+  } else {
+    const piece = {
+      x: 14,
+      y: 0,
+      type: next,
+      angle: 0,
+      falling: 0,
+      fallNext: 1,
+      shape: pieces[next].shape,
+      centre: pieces[next].centre,
+    };
+    return piece;
+  }
 }
 
 export function getNext() {
   if (queue.length === 0) {
+    // Replenish queue
     let pieceTypes = Object.keys(pieces);
+    // pieceTypes.push({ type: 'seed'}, { type: 'seed'}, { type: 'seed'});
     shuffle(pieceTypes);
+    console.log(pieceTypes)
     queue.push(...pieceTypes);
   }
   return queue[0];
@@ -171,157 +145,47 @@ export function start() {
 
   this.addScore = (points) => {
     this.score += points;
-  }
+  };
 
   /**
    * Awarn points, increase linecount and level
-   * @param {*} linesCleared 
-   * @param {*} etc 
+   * @param {*} linesCleared
+   * @param {*} etc
    */
   this.awardPoints = (linesCleared, etc) => {
-    const points = calculatePoints (linesCleared, etc);
+    const points = calculatePoints(linesCleared, etc);
     this.score += points;
     this.lines += linesCleared;
-  }
+  };
 }
 
-// Data source: https://tetris.fandom.com/wiki/SRS
-// "Super Rotation System"
-
-const I_WALLKICK_DATA = {
-  "01": [
-    [0, 0],
-    [-2, 0],
-    [1, 0],
-    [-2, -1],
-    [1, 2],
-  ],
-  "10": [
-    [0, 0],
-    [2, 0],
-    [-1, 0],
-    [2, 1],
-    [-1, -2],
-  ],
-  "12": [
-    [0, 0],
-    [-1, 0],
-    [2, 0],
-    [-1, 2],
-    [2, -1],
-  ],
-  "21": [
-    [0, 0],
-    [1, 0],
-    [-2, 0],
-    [1, -2],
-    [-2, 1],
-  ],
-  "23": [
-    [0, 0],
-    [2, 0],
-    [-1, 0],
-    [2, 1],
-    [-1, -2],
-  ],
-  "32": [
-    [0, 0],
-    [-2, 0],
-    [1, 0],
-    [-2, -1],
-    [1, 2],
-  ],
-  "30": [
-    [0, 0],
-    [1, 0],
-    [-2, 0],
-    [1, -2],
-    [-2, 1],
-  ],
-  "03": [
-    [0, 0],
-    [-1, 0],
-    [2, 0],
-    [-1, 2],
-    [2, -1],
-  ],
-};
-
-const OTHER_WALLKICK_DATA = {
-  "01": [
-    [0, 0],
-    [-1, 0],
-    [-1, 1],
-    [0, -2],
-    [-1, -2],
-  ],
-  "10": [
-    [0, 0],
-    [1, 0],
-    [1, -1],
-    [0, 2],
-    [1, 2],
-  ],
-  "12": [
-    [0, 0],
-    [1, 0],
-    [1, -1],
-    [0, 2],
-    [1, 2],
-  ],
-  "21": [
-    [0, 0],
-    [-1, 0],
-    [-1, 1],
-    [0, -2],
-    [-1, -2],
-  ],
-  "23": [
-    [0, 0],
-    [1, 0],
-    [1, 1],
-    [0, -2],
-    [1, -2],
-  ],
-  "32": [
-    [0, 0],
-    [-1, 0],
-    [-1, -1],
-    [0, 2],
-    [-1, 2],
-  ],
-  "30": [
-    [0, 0],
-    [-1, 0],
-    [-1, -1],
-    [0, 2],
-    [-1, 2],
-  ],
-  "03": [
-    [0, 0],
-    [1, 0],
-    [1, 1],
-    [0, -2],
-    [1, -2],
-  ],
-};
-
-export function tryRotate(piece, grid) {
-  console.log('piece: ', piece);
+function tryRotate(piece, grid) {
+  console.log("piece: ", piece);
   const wrapX = getWrapX(grid[0].length);
   let data = piece.type === "i" ? I_WALLKICK_DATA : OTHER_WALLKICK_DATA;
   let sequence = data[`${piece.rotatedFrom}${piece.angle}`];
-  console.log('sequence: ', sequence);
+  console.log("sequence: ", sequence);
   for (let i = 0; i < sequence.length; i++) {
     let d = sequence[i];
-    console.log('d: ', d);
+    console.log("d: ", d);
     let shiftedPiece = {
       ...piece,
       x: wrapX(piece.x - d[0]), // mirror x axis
-      y: piece.y - d[1]
+      y: piece.y - d[1],
     };
     if (!doesCollide(shiftedPiece, grid)) {
       return shiftedPiece;
     }
   }
 }
+
+function getColour(piece, opts) {
+  const archetype = pieces[piece.type];
+  if (archetype) {
+    return archetype.colour;
+  } else {
+    return "green";
+  }
+}
+
+export { tryRotate, getColour };
