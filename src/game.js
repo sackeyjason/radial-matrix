@@ -5,6 +5,7 @@ import {
   I_WALLKICK_DATA,
 } from "./game_data";
 import shuffle from "shuffle-array";
+var Color = require("color");
 
 const DEFAULT_OPTIONS = {
   screenWidth: 640,
@@ -78,7 +79,9 @@ export function spawn() {
   const next = getNext();
   queue.shift();
   if (next.type === "seed") {
+    console.log("next: ", next);
     return {
+      ...next,
       x: 14,
       y: 0,
       type: "seed",
@@ -107,9 +110,9 @@ export function getNext() {
   if (queue.length === 0) {
     // Replenish queue
     let pieceTypes = Object.keys(pieces);
-    // pieceTypes.push({ type: 'seed'}, { type: 'seed'}, { type: 'seed'});
+    pieceTypes.push({ type: "seed", ...seeds[0] });
     shuffle(pieceTypes);
-    console.log(pieceTypes)
+    console.log(pieceTypes);
     queue.push(...pieceTypes);
   }
   return queue[0];
@@ -179,12 +182,19 @@ function tryRotate(piece, grid) {
   }
 }
 
-function getColour(piece, opts) {
+Object.keys(pieces).forEach((pKey) => {
+  var p = pieces[pKey];
+  var colour = Color(p.colour);
+  p.dimmed = colour.desaturate(0.75).string();
+});
+
+function getColour(piece, opts = {}) {
+  if (piece.colour) return piece.colour;
   const archetype = pieces[piece.type];
   if (archetype) {
-    return archetype.colour;
+    return opts.dim ? archetype.dimmed : archetype.colour;
   } else {
-    return "green";
+    return "gray";
   }
 }
 

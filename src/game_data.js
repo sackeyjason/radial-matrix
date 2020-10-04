@@ -3,10 +3,10 @@ const seeds = [
     name: "swamp",
     colour: "#7d8c3a",
   },
-  // {
-  //   name: "castle",
-  //   colour: "#5742b7"
-  // }
+  {
+    name: "castle",
+    colour: "#5742b7"
+  }
 ];
 
 const pieces = {
@@ -21,7 +21,7 @@ const pieces = {
       [1, 1, 1],
     ],
     centre: [1, 1],
-    colour: "#7d8c3a",
+    colour: "#5742b7",
   },
   z: {
     shape: [

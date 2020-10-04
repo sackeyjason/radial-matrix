@@ -15,6 +15,7 @@
     "parcel": "^1.12.4"
   },
   "dependencies": {
+    "color": "^3.1.2",
     "hyperscript": "^2.0.2",
     "lodash.memoize": "^4.1.2",
     "shuffle-array": "^1.0.1"

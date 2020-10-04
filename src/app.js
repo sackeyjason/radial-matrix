@@ -12,10 +12,12 @@ import {
   removeLines,
   calculatePoints,
   tryRotate,
-  getColour
+  getColour,
 } from "./game";
 import { getCircleToGrid, getAngle } from "./geometry";
 import h from "hyperscript";
+import { Plant } from "./plant";
+import { timestamp } from "./util";
 
 const SCREEN_WIDTH = 640;
 const SCREEN_HEIGHT = 480;
@@ -39,11 +41,10 @@ const events = [];
 const modeSelector = {};
 
 let clearing = null;
-
 let piece = null;
-
 let mainMenu = true;
 let round = null;
+let plant = null;
 
 const wrapX = getWrapX(GRID_WIDTH);
 
@@ -114,20 +115,21 @@ function renderGrid(grid) {
       // if (gridLookup(gridX, gridY)) {
       // if (lookup(gridX, gridY)) {
       if (grid[gridY] && grid[gridY][gridX]) {
-        const hasShape = grid[gridY][gridX].shape;
-        const clearingRow = grid[gridY][gridX] === 3;
+        const cell = grid[gridY][gridX];
+        const hasShape = cell.shape;
+        const clearingRow = cell === 3;
         if (modeSelector.mode === "colour" || modeSelector.mode === "nuts") {
           let hue2 = (hue + (angle / (2 * Math.PI)) * 360) % 360;
           ctx.fillStyle = `hsla(${hue2}deg, 100%, 80%, 1.0)`;
         } else {
           if (hasShape) {
-            ctx.fillStyle = getColour(grid[gridY][gridX]);
+            ctx.fillStyle = getColour(cell);
           } else if (clearingRow) {
             fuzz = Math.random() * 3 - 1.5;
             let hue2 = (hue + (angle / (2 * Math.PI)) * 360) % 360;
             ctx.fillStyle = `hsla(${hue2}deg, 100%, 80%, 1.0)`;
           } else {
-            ctx.fillStyle = grid[gridY][gridX].colour || `rgb(200,200,200)`;
+            ctx.fillStyle = cell.colour || `rgb(200,200,200)`;
           }
         }
         ctx.fillRect(x, y, 2 + fuzz, pixelHeight + fuzz);
@@ -162,11 +164,15 @@ function getClickHandler() {
 
 function lockPieceIn() {
   if (piece.type === "seed") {
-
+    // Check appropriate soil condition
+    // Plant down
+    piece.y = piece.y + 1;
+    plant = new Plant(piece, { wrapX });
+  } else {
+    getPieceGridCoords(piece, grid).forEach(([x, y]) => {
+      if (grid[y]) grid[y][x] = { colour: getColour(piece, { dim: true }) };
+    });
   }
-  getPieceGridCoords(piece, grid).forEach(([x, y]) => {
-    if (grid[y]) grid[y][x] = { colour: getColour(piece, { dim: true }) };
-  });
   piece = null;
 }
 
@@ -291,6 +297,11 @@ function update(t) {
       grid2 = grid;
       clearing = null;
     }
+  } else if (plant) {
+    plant.grow(t, grid);
+    if (plant.finished) {
+      plant = null;
+    }
   } else {
     const completeLines = [];
     grid2.forEach((line, y) => {
@@ -338,12 +349,6 @@ function showMainMenu(message, etc) {
 function render() {
   renderGrid(grid2);
   // renderFps(ctx, fps);
-}
-
-function timestamp() {
-  return window.performance && window.performance.now
-    ? window.performance.now()
-    : Date.now();
 }
 
 let last = timestamp();
